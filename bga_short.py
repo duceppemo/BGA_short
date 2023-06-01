@@ -1,4 +1,5 @@
 import os
+import shutil
 from argparse import ArgumentParser
 from multiprocessing import cpu_count
 from psutil import virtual_memory
@@ -11,7 +12,7 @@ __version__ = '0.1'
 
 '''
 mamba create -n short_BGA falco=1.2.1 skesa=2.4 spades=3.15.5 bbmap=39.01 fastp=0.23.3 samtools=1.17 minimap2=2.26 \
-    psutil=5.9.5 qualimap=2.2.2d quast=5.2.0 
+    psutil=5.9.5 qualimap=2.2.2d quast=5.2.0 bandage=0.8.1
 '''
 
 
@@ -33,17 +34,29 @@ class BGAShort(object):
         self.run()
 
     def run(self):
-        # Folder structure
-        read_qc_folder = self.output + '/1_read_qc/'
-        trimmed_folder = self.output + '/2_trimmed/'
-        assembled_folder = self.output + '/3_assembled/'
-        assembly_qc_folder = self.output + '/4_assembly_qc/'
-
         # Checks
         print('Checking a few things...')
         Methods.check_cpus(self.cpu, self.parallel)
         Methods.check_mem(self.mem)
         Methods.check_input(self.input)
+
+        # Folder structure
+        read_qc_folder = self.output + '/1_read_qc/'
+        trimmed_folder = self.output + '/2_trimmed/'
+        assembled_folder = self.output + '/3_assembled/'
+        assembly_qc_folder = self.output + '/4_assembly_qc/'
+        quast_folder = assembly_qc_folder + 'quast/'
+        qualimap_folder = assembly_qc_folder + 'qualimap/'
+        gfa_folder = assembly_qc_folder + 'assembly_graphs/'
+
+        # Create folders
+        Methods.make_folder(read_qc_folder)
+        Methods.make_folder(trimmed_folder)
+        Methods.make_folder(assembled_folder)
+        Methods.make_folder(assembly_qc_folder)
+        Methods.make_folder(quast_folder)
+        Methods.make_folder(qualimap_folder)
+        Methods.make_folder(gfa_folder)
 
         # Get fastq files
         sample_dict = Methods.get_fastq_files(self.input)
@@ -64,19 +77,33 @@ class BGAShort(object):
         if self.assembler == 'skesa':
             Methods.assemble_skesa_parallel(sample_dict, assembled_folder, self.cpu, self.mem, self.parallel)
         else:  # elif self.assembler == 'spades':
-            Methods.assemble_spades_parallel(sample_dict, assembled_folder, self.cpu, self.parallel)
+            Methods.assemble_spades_parallel(sample_dict, assembled_folder, self.cpu, self.mem, self.parallel)
 
         # Assembly QC
         print('Performing assembly QC...')
         assembly_list = Methods.list_files_in_folder(assembled_folder, '.fasta')
-        # trimmed_list = Methods.list_files_in_folder(trimmed_folder, '.fastq.gz')
+
         print('\tMapping trimmed reads to assemblies with minimap2')
-        Methods.map_minimap2_paired_parallel(assembly_list, trimmed_folder, assembly_qc_folder, self.cpu, self.parallel)
-        bam_list = Methods.list_files_in_folder(assembly_qc_folder, '.bam')
+        Methods.map_minimap2_paired_parallel(assembly_list, trimmed_folder, qualimap_folder, self.cpu, self.parallel)
+        bam_list = Methods.list_files_in_folder(qualimap_folder, '.bam')
+
         print('\tRunning Qualimap')
-        Methods.run_qualimap_parallel(bam_list, assembly_qc_folder, self.cpu, self.mem, self.parallel)
-        print('Running Q UAST...')
-        Methods.run_quast(assembly_list, assembly_qc_folder, self.cpu)
+        Methods.run_qualimap_parallel(bam_list, qualimap_folder, self.cpu, self.mem, self.parallel)
+
+        print('Running QUAST...')
+        Methods.run_quast(assembly_list, quast_folder, self.cpu)
+
+        print('Drawing assembly graphs...')
+        if self.assembler == 'skesa':
+            Methods.gfa_connector_parallel(assembly_list, sample_dict, gfa_folder, self.cpu, self.parallel)
+        else:  # elif self.assembler == 'spades':
+            # Move gfa files
+            gfa_list = Methods.list_files_in_folder(assembled_folder, '.gfa')
+            for gfa in gfa_list:
+                shutil.move(gfa, gfa_folder)
+
+        gfa_list = Methods.list_files_in_folder(gfa_folder, '.gfa')
+        Methods.assembly_graph_parallel(gfa_list, gfa_folder, self.cpu)
 
         print('DONE')
 

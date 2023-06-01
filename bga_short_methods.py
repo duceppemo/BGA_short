@@ -206,21 +206,82 @@ class Methods(object):
                 pass
 
     @staticmethod
-    def assemble_spades(sample, output_folder, cpu):
+    def assemble_spades(sample, path_list, output_folder, cpu, mem):
+        # I/O
+        sub_folder = output_folder + sample + '/'
+        Methods.make_folder(sub_folder)
+        r1 = path_list[0]
+
         cmd = ['spades.py',
                '--threads', str(cpu),
-               '-o', output_folder,
-               ]
+               '--memory', str(mem),
+               '-o', sub_folder]
+        if len(path_list) == 1:
+            cmd += ['--s', str(1), r1]
+        else:
+            r2 = path_list[1]
+            cmd += ['--pe-1', str(1), r1,
+                    '--pe-2', str(1), r2]
+
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
+        # Move and rename assembly and assembly graph files
+        shutil.move(sub_folder + 'scaffolds.fasta', output_folder + sample + '.fasta')
+        shutil.move(sub_folder + 'assembly_graph_with_scaffolds.gfa', output_folder + sample + '.gfa')
+
+        # Delete subfolder
+        shutil.rmtree(sub_folder, ignore_errors=False, onerror=None)  # delete all
+
     @staticmethod
-    def assemble_spades_parallel(sample_dict, output_folder, cpu, parallel):
+    def assemble_spades_parallel(sample_dict, output_folder, cpu, mem, parallel):
         Methods.make_folder(output_folder)
 
         with futures.ThreadPoolExecutor(max_workers=int(parallel)) as executor:
-            args = ((sample, path_list, output_folder, int(cpu / parallel), mem)
+            args = ((sample, path_list, output_folder, int(cpu / parallel), int(mem / parallel))
                     for sample, path_list in sample_dict.items())
             for results in executor.map(lambda x: Methods.assemble_spades(*x), args):
+                pass
+
+    @staticmethod
+    def gfa_connector(sample, path_list, assembly, output_folder, cpu):
+        r1 = path_list[0]
+
+        cmd = ['gfa_connector',
+               '--cores', str(cpu),
+               '--contigs', assembly,
+               '--gfa', output_folder + sample + '.gfa',
+               '--reads']
+        if len(path_list) == 1:
+            cmd += [r1]
+        else:  # elif len(path_list) == 2:
+            r2 = path_list[1]
+            cmd += ['{},{}'.format(r1, r2)]
+
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+
+    @staticmethod
+    def gfa_connector_parallel(assembly_list, sample_dict, output_folder, cpu, parallel):
+        Methods.make_folder(output_folder)
+
+        with futures.ThreadPoolExecutor(max_workers=int(parallel)) as executor:
+            args = ((sample, path_list, [assembly for assembly in assembly_list if sample in assembly][0],
+                     output_folder, int(cpu / parallel)) for sample, path_list in sample_dict.items())
+            for results in executor.map(lambda x: Methods.gfa_connector(*x), args):
+                pass
+
+    @staticmethod
+    def assembly_graph(gfa, output_folder):
+        sample = os.path.basename(gfa).split('.')[0]
+        cmd_bandage = ['Bandage', 'image', gfa, output_folder + sample + '_graph.png']
+        subprocess.run(cmd_bandage, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+
+    @staticmethod
+    def assembly_graph_parallel(gfa_list, output_folder, cpu):
+        Methods.make_folder(output_folder)
+
+        with futures.ThreadPoolExecutor(max_workers=int(cpu)) as executor:
+            args = ((gfa, output_folder) for gfa in gfa_list)
+            for results in executor.map(lambda x: Methods.assembly_graph(*x), args):
                 pass
 
     @staticmethod
@@ -265,26 +326,28 @@ class Methods(object):
 
     @staticmethod
     def run_qualimap(bam, output_folder, cpu, mem):
+        # I/O
         sample = os.path.basename(bam).split('.')[0]
-        out_folder = output_folder + sample + '/'
-        Methods.make_folder(out_folder)
+        sub_folder = output_folder + sample + '/'
+        Methods.make_folder(sub_folder)
 
         cmd = ['qualimap', 'bamqc',
                # '--paint-chromosome-limits',  # not so great with short read assemblies which result in many contigs
                '-bam', bam,
                '--java-mem-size={}G'.format(mem),
                '-nt', str(cpu),
-               '-outdir', out_folder,
+               '-outdir', sub_folder,
                '-outformat', 'HTML']
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
         # Rename html report
-        os.rename(out_folder + 'qualimapReport.html', out_folder + sample + 'html')
+        os.rename(sub_folder + 'qualimapReport.html', sub_folder + sample + '.html')
 
         # Cleanup bam files
         ext = ['.bam', '.bai']
         for i in ext:
-            for j in glob.glob(output_folder + '/*' + i):
+            file_list = glob.glob(output_folder + '*' + i)
+            for j in file_list:
                 if os.path.exists(j):
                     os.remove(j)
 
