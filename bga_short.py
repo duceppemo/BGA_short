@@ -88,7 +88,7 @@ class BGAShort(object):
         assembly_list = Methods.list_files_in_folder(assembled_folder, '.fasta')
 
         print('\tMapping trimmed reads to assemblies with minimap2')
-        Methods.map_minimap2_paired_parallel(assembly_list, trimmed_folder, qualimap_folder, self.cpu, self.parallel)
+        Methods.map_minimap2_parallel(assembly_list, trimmed_folder, qualimap_folder, self.cpu, self.parallel)
         bam_list = Methods.list_files_in_folder(qualimap_folder, '.bam')
 
         print('\tRunning Qualimap')
