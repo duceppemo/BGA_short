@@ -343,14 +343,6 @@ class Methods(object):
         # Rename html report
         os.rename(sub_folder + 'qualimapReport.html', sub_folder + sample + '.html')
 
-        # Cleanup bam files
-        ext = ['.bam', '.bai']
-        for i in ext:
-            file_list = glob.glob(output_folder + '*' + i)
-            for j in file_list:
-                if os.path.exists(j):
-                    os.remove(j)
-
     @staticmethod
     def run_qualimap_parallel(bam_list, output_folder, cpu, mem, parallel):
         Methods.make_folder(output_folder)
@@ -360,6 +352,14 @@ class Methods(object):
                     for bam in bam_list)
             for results in executor.map(lambda x: Methods.run_qualimap(*x), args):
                 pass
+        
+        # Cleanup bam files
+        ext = ['.bam', '.bai']
+        for i in ext:
+            file_list = glob.glob(output_folder + '*' + i)
+            for j in file_list:
+                if os.path.exists(j):
+                    os.remove(j)
 
     @staticmethod
     def run_quast(assembly_list, output_folder, cpu):
