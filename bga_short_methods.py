@@ -243,10 +243,10 @@ class Methods(object):
                 pass
 
     @staticmethod
-    def gfa_connector(sample, path_list, assembly, output_folder, cpu):
+    def gfa_connector(sample, path_list, assembly, output_folder, cpu, gfa_con):
         r1 = path_list[0]
 
-        cmd = ['gfa_connector',
+        cmd = [gfa_con,
                '--cores', str(cpu),
                '--contigs', assembly,
                '--gfa', output_folder + sample + '.gfa',
@@ -260,12 +260,12 @@ class Methods(object):
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     @staticmethod
-    def gfa_connector_parallel(assembly_list, sample_dict, output_folder, cpu, parallel):
+    def gfa_connector_parallel(assembly_list, sample_dict, output_folder, cpu, parallel, gfa_con):
         Methods.make_folder(output_folder)
 
         with futures.ThreadPoolExecutor(max_workers=int(parallel)) as executor:
             args = ((sample, path_list, [assembly for assembly in assembly_list if sample in assembly][0],
-                     output_folder, int(cpu / parallel)) for sample, path_list in sample_dict.items())
+                     output_folder, int(cpu / parallel), gfa_con) for sample, path_list in sample_dict.items())
             for results in executor.map(lambda x: Methods.gfa_connector(*x), args):
                 pass
 

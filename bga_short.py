@@ -30,6 +30,10 @@ class BGAShort(object):
         self.mem = args.memory
         self.parallel = args.parallel
 
+        # Script location
+        script_home = __file__
+        self.gfa_con = '/'.join(script_home.split('/')[:-1]) + '/bin/gfa_connector'
+
         # Run pipeline
         self.run()
 
@@ -95,7 +99,8 @@ class BGAShort(object):
 
         print('Drawing assembly graphs...')
         if self.assembler == 'skesa':
-            Methods.gfa_connector_parallel(assembly_list, sample_dict, gfa_folder, self.cpu, self.parallel)
+            Methods.gfa_connector_parallel(assembly_list, sample_dict, gfa_folder, self.cpu, self.parallel,
+                                           self.gfa_con)
         else:  # elif self.assembler == 'spades':
             # Move gfa files
             gfa_list = Methods.list_files_in_folder(assembled_folder, '.gfa')

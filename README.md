@@ -1,14 +1,17 @@
 ## BGA_short
-Bacterial genome assembly pipeline for Short reads.
+Bacterial genome assembly pipeline for short reads. Works with Illumina single-end or paired-end data. Also supports Ion Torrent sequencing data.
 
 ## Description
-1. Trim reads with Fastp.
-2. Assemble trimmed reads with SKESA or SPAdes.
-3. Perform assemble QC with Qualimap and QUAST.
+1. Perform raw read QC wiht FastQC.
+2. Trim reads with Fastp.
+3. Assemble trimmed reads with SKESA or SPAdes.
+4. Perform assemble QC with Qualimap and QUAST. Also produce images of the assembly graphs.
+
+`gfa_connector` developed by NCBI (https://github.com/ncbi/SKESA) is being used to produce the assembly graphs for the SKESA assemblies. Since it's currently not available through conda, the binary is provided as is. It was compiled using Ubuntu 20.04. 
 
 ## Installation
-You'll need conda (I like [minconda](https://docs.conda.io/en/latest/miniconda.html)) to create a virtual environment to manage all the dependencies. Refer to the [bioconda](https://bioconda.github.io/) for instructions on how to set your channels if not already done. I also like to use `mamba` ([here](https://mamba.readthedocs.io/en/latest/installation.html)) instead of `conda` as it's much faster and better are solving multiple dependencies.
-```commandline
+You'll need conda (I like [minconda](https://docs.conda.io/en/latest/miniconda.html)) to create a virtual environment to manage all the dependencies. Refer to the [bioconda](https://bioconda.github.io/) for instructions on how to set your channels if not already done. I also like to use `mamba` ([here](https://mamba.readthedocs.io/en/latest/installation.html)) instead of `conda` as it's much faster and better at solving multiple dependencies.
+```bash
 # Create conda enironment
 conda create -n BGA_short falco=1.2.1 skesa=2.4 spades=3.15.5 bbmap=39.01 fastp=0.23.3 samtools=1.17 minimap2=2.26 \
     psutil=5.9.5 qualimap=2.2.2d quast=5.2.0 bandage=0.8.1
@@ -26,7 +29,7 @@ python bga_sort.py -h
 ```
 
 ## USAGE
-```commandline
+```
 usage: python bga_short.py [-h] -i /path/to/short_reads [--ion-torrent] -o /path/to/output_folder/ [-a {skesa,spades}]
                            [-t 16] [-p 2] [-m 57] [-v]
 
@@ -51,7 +54,7 @@ optional arguments:
 
 # Example
 Assemble paired-end short reads, 3 samples in parallel, using spades:
-```commandline
+```bash
 python bga_short.py \
     -i /home/marco/analyses/short_ass_test/fastq \
     -o /home/marco/analyses/short_ass_test/out_sapdes \
@@ -59,7 +62,7 @@ python bga_short.py \
     -a spades
 ```
 Assemble Ion Torrent single-end short reads, 2 samples in parallel, using 16 cores and 50GB of memory, with skesa:
-```commandline
+```bash
 python bga_short.py \
     -i /home/marco/analyses/short_ass_test/fastq \
     -o /home/marco/analyses/short_ass_test/out_sapdes \
