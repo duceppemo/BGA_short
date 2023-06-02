@@ -285,7 +285,7 @@ class Methods(object):
                 pass
 
     @staticmethod
-    def map_minimap2_paired(ref, read_folder, cpu, output_folder):
+    def map_minimap2(ref, read_folder, cpu, output_folder):
         # I/O
         sample = os.path.basename(ref).split('.')[0]
         r1 = read_folder + sample + '_R1.fastq.gz'
@@ -293,7 +293,9 @@ class Methods(object):
         output_bam = output_folder + sample + '.bam'
 
         # cmd_bwa_mem = ['bwa', 'mem', '-t', str(cpu), genome, r1, r2]
-        minimap2_cmd = ['minimap2', '-a', '-x', 'sr', '-t', str(cpu), ref, r1, r2]
+        minimap2_cmd = ['minimap2', '-a', '-x', 'sr', '-t', str(cpu), ref, r1]
+        if os.path.exits(r2):
+            minimap2_cmd += [r2]
         samtools_view_cmd = ['samtools', 'view', '-@', str(cpu), '-F', '4', '-h', '-']
         samtools_fixmate_cmd = ['samtools', 'fixmate', '-@', str(cpu), '-m', '-', '-']
         samtools_sort_cmd = ['samtools', 'sort', '-@', str(cpu), '-']
@@ -303,25 +305,32 @@ class Methods(object):
         p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         p2 = subprocess.Popen(samtools_view_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         p1.stdout.close()
-        p3 = subprocess.Popen(samtools_fixmate_cmd, stdin=p2.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        p2.stdout.close()
-        p4 = subprocess.Popen(samtools_sort_cmd, stdin=p3.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        p3.stdout.close()
-        p5 = subprocess.Popen(samtools_markdup_cmd, stdin=p4.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        p4.stdout.close()
-        p5.communicate()
+        if if os.path.exits(r2):
+            p3 = subprocess.Popen(samtools_fixmate_cmd, stdin=p2.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            p2.stdout.close()
+            p4 = subprocess.Popen(samtools_sort_cmd, stdin=p3.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            p3.stdout.close()
+            p5 = subprocess.Popen(samtools_markdup_cmd, stdin=p4.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            p4.stdout.close()
+            p5.communicate()
+        else:
+            p3 = subprocess.Popen(samtools_sort_cmd, stdin=p3.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            p2.stdout.close()
+            p4 = subprocess.Popen(samtools_markdup_cmd, stdin=p4.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            p3.stdout.close()
+            p4.communicate()
 
         # Index bam file
         subprocess.run(samtools_index_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     @staticmethod
-    def map_minimap2_paired_parallel(assembly_list, read_folder, output_folder, cpu, parallel):
+    def map_minimap2_parallel(assembly_list, read_folder, output_folder, cpu, parallel):
         Methods.make_folder(output_folder)
 
         with futures.ThreadPoolExecutor(max_workers=int(parallel)) as executor:
             args = ((ref, read_folder, int(cpu / parallel), output_folder)
                     for ref in assembly_list)
-            for results in executor.map(lambda x: Methods.map_minimap2_paired(*x), args):
+            for results in executor.map(lambda x: Methods.map_minimap2(*x), args):
                 pass
 
     @staticmethod
