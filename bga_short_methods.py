@@ -12,10 +12,7 @@ from multiprocessing import cpu_count
 
 class Methods(object):
     accepted_extensions = ['.fq', '.fq.gz',
-                           '.fastq', '.fastq.gz',
-                           '.fasta', '.fasta.gz',
-                           '.fa', '.fa.gz',
-                           '.fna', '.fna.gz']
+                           '.fastq', '.fastq.gz']
 
     @staticmethod
     def check_input(my_input):
@@ -27,8 +24,8 @@ class Methods(object):
         file_list = os.listdir(my_input)
 
         # Check if folder is not empty and all files have the accepted extensions
-        if not all([f.endswith(tuple(Methods.accepted_extensions)) for f in file_list]):
-            raise Exception('Make sure all files in input folder end with {}'.format(Methods.accepted_extensions))
+        if not any([f.endswith(tuple(Methods.accepted_extensions)) for f in file_list]):
+            raise Exception('Make sure some files in input folder end with {}'.format(Methods.accepted_extensions))
 
     @staticmethod
     def check_cpus(requested_cpu, n_proc):
@@ -294,7 +291,7 @@ class Methods(object):
 
         # cmd_bwa_mem = ['bwa', 'mem', '-t', str(cpu), genome, r1, r2]
         minimap2_cmd = ['minimap2', '-a', '-x', 'sr', '-t', str(cpu), ref, r1]
-        if os.path.exits(r2):
+        if os.path.exists(r2):
             minimap2_cmd += [r2]
         samtools_view_cmd = ['samtools', 'view', '-@', str(cpu), '-F', '4', '-h', '-']
         samtools_fixmate_cmd = ['samtools', 'fixmate', '-@', str(cpu), '-m', '-', '-']
@@ -305,7 +302,7 @@ class Methods(object):
         p1 = subprocess.Popen(minimap2_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         p2 = subprocess.Popen(samtools_view_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         p1.stdout.close()
-        if if os.path.exits(r2):
+        if os.path.exists(r2):
             p3 = subprocess.Popen(samtools_fixmate_cmd, stdin=p2.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             p2.stdout.close()
             p4 = subprocess.Popen(samtools_sort_cmd, stdin=p3.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
@@ -314,9 +311,9 @@ class Methods(object):
             p4.stdout.close()
             p5.communicate()
         else:
-            p3 = subprocess.Popen(samtools_sort_cmd, stdin=p3.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            p3 = subprocess.Popen(samtools_sort_cmd, stdin=p2.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             p2.stdout.close()
-            p4 = subprocess.Popen(samtools_markdup_cmd, stdin=p4.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            p4 = subprocess.Popen(samtools_markdup_cmd, stdin=p3.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             p3.stdout.close()
             p4.communicate()
 
