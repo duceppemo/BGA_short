@@ -223,8 +223,11 @@ class Methods(object):
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
         # Move and rename assembly and assembly graph files
-        shutil.move(sub_folder + 'scaffolds.fasta', output_folder + sample + '.fasta')
-        shutil.move(sub_folder + 'assembly_graph_with_scaffolds.gfa', output_folder + sample + '.gfa')
+        try:  # In case there is no assembly
+            shutil.move(sub_folder + 'scaffolds.fasta', output_folder + sample + '.fasta')
+            shutil.move(sub_folder + 'assembly_graph_with_scaffolds.gfa', output_folder + sample + '.gfa')
+        except FileNotFoundError:
+            pass
 
         # Delete subfolder
         shutil.rmtree(sub_folder, ignore_errors=False, onerror=None)  # delete all
