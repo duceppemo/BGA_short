@@ -1,3 +1,11 @@
+> [!IMPORTANT]
+> **BGA_short has been superseded by [HashBrown](https://github.com/duceppemo/HashBrown)**, which merges
+> [BGA](https://github.com/duceppemo/BGA) and BGA_short into one tool and one conda environment:
+> short-read-only assembly (SKESA or SPAdes, single- or paired-end, Ion Torrent supported), hybrid
+> polishing with benchmark-chosen defaults, and a QA-grade HTML/PDF report per sample. First release:
+> [HashBrown v1.1.0](https://github.com/duceppemo/HashBrown/releases/tag/v1.1.0).
+> This repository is kept for reference and is no longer developed.
+
 ## BGA_short
 Bacterial genome assembly pipeline for short reads. Works with Illumina single-end or paired-end data. Also supports Ion Torrent sequencing data.
 
